@@ -6,3 +6,4 @@ libcairo2
 libgdk-pixbuf-xlib-2.0-0
 libglib2.0-0
 shared-mime-info
+fonts-noto-color-emoji
