@@ -56,27 +56,17 @@ st.markdown("""
 This app uses **SerpAPI** to safely pull real-time Google Maps Profile performance metrics and **OpenAI** to compile a downloadable growth strategy.
 """)
 
-# Load secrets (TOML)
-try:
-    serp_api_key = st.secrets["SERP_API_KEY"]
-    openai_api_key = st.secrets["OPENAI_API_KEY"]
-except Exception:
-    st.error("""
-    **Missing secrets.**  
-    Please add `SERP_API_KEY` and `OPENAI_API_KEY` in Streamlit secrets (TOML format).
+# Sidebar API Credentials
+st.sidebar.header("🔑 API Credentials")
+serp_api_key = st.sidebar.text_input("SerpAPI Key", type="password", help="Get yours at serpapi.com")
+openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password", help="Get yours at platform.openai.com")
 
-    On Streamlit Cloud: App settings → Secrets.  
-    Locally: create `.streamlit/secrets.toml`.
-    """)
-    st.stop()
-
-# Sidebar (ethical note only)
+st.sidebar.markdown("---")
 st.sidebar.markdown("### 🕊️ STEM Ethical Commitment")
 st.sidebar.info("""
 1. **Public Maps Architecture:** Accesses public business profiles legally via official search APIs.
 2. **Empowerment Focus:** Helps local business owners audit their visibility and close gaps with competitors.
 3. **No scraping bots** — only official SerpAPI endpoints.
-4. **Secrets:** API keys are loaded securely from encrypted Streamlit secrets (TOML).
 """)
 
 if not WEASYPRINT_AVAILABLE:
@@ -156,7 +146,7 @@ def fetch_google_maps_profile(biz_name, city_state, api_key):
 
 def compile_business_playbook(biz_name, city_state, goal, maps_data, openai_key):
     if not openai_key:
-        return "⚠️ OpenAI API key required to generate the playbook."
+        return "⚠️ OpenAI API key required to generate the playbook. Add it in the sidebar."
 
     client = OpenAI(api_key=openai_key)
 
