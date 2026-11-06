@@ -56,17 +56,27 @@ st.markdown("""
 This app uses **SerpAPI** to safely pull real-time Google Maps Profile performance metrics and **OpenAI** to compile a downloadable growth strategy.
 """)
 
-# Sidebar
-st.sidebar.header("🔑 API Credentials")
-serp_api_key = st.sidebar.text_input("SerpAPI Key", type="password", help="Get yours at serpapi.com")
-openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password", help="Get yours at platform.openai.com")
+# Load secrets (TOML)
+try:
+    serp_api_key = st.secrets["SERP_API_KEY"]
+    openai_api_key = st.secrets["OPENAI_API_KEY"]
+except Exception:
+    st.error("""
+    **Missing secrets.**  
+    Please add `SERP_API_KEY` and `OPENAI_API_KEY` in Streamlit secrets (TOML format).
 
-st.sidebar.markdown("---")
+    On Streamlit Cloud: App settings → Secrets.  
+    Locally: create `.streamlit/secrets.toml`.
+    """)
+    st.stop()
+
+# Sidebar (ethical note only)
 st.sidebar.markdown("### 🕊️ STEM Ethical Commitment")
 st.sidebar.info("""
 1. **Public Maps Architecture:** Accesses public business profiles legally via official search APIs.
 2. **Empowerment Focus:** Helps local business owners audit their visibility and close gaps with competitors.
 3. **No scraping bots** — only official SerpAPI endpoints.
+4. **Secrets:** API keys are loaded securely from encrypted Streamlit secrets (TOML).
 """)
 
 if not WEASYPRINT_AVAILABLE:
@@ -100,7 +110,6 @@ def is_nap_verified(profile):
 
 def fetch_google_maps_profile(biz_name, city_state, api_key):
     if not api_key:
-        # Demo data – one verified, one not
         return [
             {"name": f"{biz_name} Main Location", "rating": 4.2, "reviews": 48, "address": f"123 Main St, {city_state}", "type": "Local Business", "phone": "(555) 123-4567"},
             {"name": f"{biz_name} Downtown", "rating": 4.7, "reviews": 112, "address": f"555 Broadway, {city_state}", "type": "Local Business", "phone": ""},
@@ -147,7 +156,7 @@ def fetch_google_maps_profile(biz_name, city_state, api_key):
 
 def compile_business_playbook(biz_name, city_state, goal, maps_data, openai_key):
     if not openai_key:
-        return "⚠️ OpenAI API key required to generate the playbook. Add it in the sidebar."
+        return "⚠️ OpenAI API key required to generate the playbook."
 
     client = OpenAI(api_key=openai_key)
 
