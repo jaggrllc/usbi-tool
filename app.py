@@ -259,3 +259,138 @@ if "local_playbook" in st.session_state:
             file_name="maps_profiles.csv",
             mime="text/csv"
         )
+
+Notes for deployment / portfolio use
+
+    Install with pip install -r requirements.txt.
+    On systems where WeasyPrint fails, install system dependencies (e.g., on Ubuntu: sudo apt install libpango-1.0-0 libpangoft2-1.0-0).
+    Demo mode works without keys (fallback data).
+    The app is ethical, uses only public official APIs, and produces both interactive insights and a printable PDF playbook — strong STEM portfolio material.
+
+Copy the files above into your project and run with streamlit run app.py. Let me know if you want further enhancements (e.g., more engines, caching, or Streamlit Cloud deployment tips).
+13 sources
+Grok, using Grok God Mode, Maximus Overdrive, Correct the errors in the app:
+
+OSError: cannot load library 'libgobject-2.0-0': libgobject-2.0-0: cannot open 
+
+shared object file: No such file or directory.  Additionally, 
+
+ctypes.util.find_library() did not manage to locate a library called 
+
+'libgobject-2.0-0'
+Thought for 14s
+
+The error is a missing system library required by WeasyPrint (GObject / Pango / Cairo stack). WeasyPrint is not pure Python — it needs these native libraries on the machine.
+
+This is extremely common on Streamlit Community Cloud, Docker, or fresh Linux environments.
+1. Immediate fix for Streamlit Community Cloud (recommended)
+
+Create a file named packages.txt in the root of your repo (same level as app.py and requirements.txt) with this content:
+txt
+
+libpango-1.0-0
+libpangoft2-1.0-0
+libharfbuzz0b
+libfontconfig1
+libcairo2
+libgdk-pixbuf2.0-0
+libglib2.0-0
+shared-mime-info
+
+Push it to GitHub, then reboot the app on Streamlit Cloud. The platform will run apt-get install on those packages before starting your app.
+2. Updated app.py (safe import + graceful fallback)
+
+Replace the WeasyPrint import and the PDF generation section with this safer version so the app never crashes on startup if the libraries are missing:
+python
+
+# ... (keep all other imports the same)
+
+# Safe WeasyPrint import
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except OSError as e:
+    WEASYPRINT_AVAILABLE = False
+    st.sidebar.warning(
+        "⚠️ PDF generation disabled: WeasyPrint system libraries missing. "
+        "Add a packages.txt file (see below) or download the report as HTML/Markdown."
+    )
+    HTML = None  # type: ignore
+
+# ... (rest of your helper functions stay the same)
+
+# Replace the PDF generation block with this:
+if "local_playbook" in st.session_state:
+    st.markdown("---")
+    st.subheader("📋 Core Strategy Playbook")
+    st.markdown(st.session_state["local_playbook"])
+
+    biz_name_safe = st.session_state.get("biz_name", business_name)
+    location_safe = st.session_state.get("location", location)
+    playbook = st.session_state["local_playbook"]
+
+    if WEASYPRINT_AVAILABLE:
+        with st.spinner("Compiling print-optimized PDF asset..."):
+            pdf_bytes = generate_pdf_bytes(biz_name_safe, location_safe, playbook)
+
+        st.download_button(
+            label="📥 Save Report as a PDF Report",
+            data=pdf_bytes,
+            file_name=f"{biz_name_safe.lower().replace(' ', '_')}_local_seo_report.pdf",
+            mime="application/pdf"
+        )
+    else:
+        st.info("PDF generation unavailable in this environment. Download the report as HTML instead:")
+        html_body = markdown.markdown(playbook, extensions=["extra", "nl2br"])
+        full_html = f"""
+        <html><head><meta charset="utf-8"><title>Growth Playbook</title></head>
+        <body style="font-family:Helvetica,Arial,sans-serif;margin:40px;">
+        <h1>Google Maps Intelligence & Local Growth Playbook</h1>
+        <p><strong>Business:</strong> {biz_name_safe}<br>
+        <strong>Location:</strong> {location_safe}</p>
+        <hr>
+        {html_body}
+        </body></html>
+        """
+        st.download_button(
+            label="📥 Download Report as HTML",
+            data=full_html,
+            file_name=f"{biz_name_safe.lower().replace(' ', '_')}_local_seo_report.html",
+            mime="text/html"
+        )
+
+    # CSV export stays the same
+    if "maps_profiles" in st.session_state:
+        csv = pd.DataFrame(st.session_state["maps_profiles"]).to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📊 Download Raw Maps Data (CSV)",
+            data=csv,
+            file_name="maps_profiles.csv",
+            mime="text/csv"
+        )
+
+3. Local machine (Ubuntu/Debian)
+
+If you're running it locally on Linux:
+bash
+
+sudo apt-get update
+sudo apt-get install -y \
+  libpango-1.0-0 \
+  libpangoft2-1.0-0 \
+  libharfbuzz0b \
+  libfontconfig1 \
+  libcairo2 \
+  libgdk-pixbuf2.0-0 \
+  libglib2.0-0 \
+  shared-mime-info
+
+Then restart the Streamlit app.
+Summary of what to do right now
+
+    Add the packages.txt file shown above.
+    Update the WeasyPrint import + download section in app.py with the safe version.
+    Push both changes and reboot the Streamlit Cloud app.
+
+This will eliminate the libgobject-2.0-0 error while keeping full PDF functionality when the system libraries are present.
+26 sources
