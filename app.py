@@ -4,24 +4,30 @@ import pandas as pd
 import plotly.express as px
 import markdown
 from openai import OpenAI
-from weasyprint import HTML
 import io
 
-# 🌟 Page & Aesthetic Configuration
+# Safe WeasyPrint import (prevents crash if system libs are missing)
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except OSError:
+    WEASYPRINT_AVAILABLE = False
+    HTML = None  # type: ignore
+
+# Page config
 st.set_page_config(
     page_title="Universal Small Business Intelligence Tool",
     page_icon="🚀",
     layout="wide"
 )
 
-# App Title & STEM Purpose
 st.title("🚀 Universal Small Business Intelligence & Maps Optimizer")
 st.markdown("""
 *Created by STEM Students to empower local businesses through data transparency.*  
-This app uses **SerpAPI** to safely pull real-time Google Maps Profile performance metrics and **OpenAI** to compile a downloadable PDF growth strategy.
+This app uses **SerpAPI** to safely pull real-time Google Maps Profile performance metrics and **OpenAI** to compile a downloadable growth strategy.
 """)
 
-# 🔑 Sidebar Setup for Credentials
+# Sidebar
 st.sidebar.header("🔑 API Credentials")
 serp_api_key = st.sidebar.text_input("SerpAPI Key", type="password", help="Get yours at serpapi.com")
 openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password", help="Get yours at platform.openai.com")
@@ -34,7 +40,13 @@ st.sidebar.info("""
 3. **No scraping bots** — only official SerpAPI endpoints.
 """)
 
-# 🎯 Step 1: Input Local Business Profile
+if not WEASYPRINT_AVAILABLE:
+    st.sidebar.warning(
+        "⚠️ PDF generation disabled: WeasyPrint system libraries missing. "
+        "Add a packages.txt file with the required system packages, or use the HTML download instead."
+    )
+
+# Inputs
 st.subheader("🏢 Step 1: Define the Business Profile")
 c1, c2, c3 = st.columns(3)
 with c1:
@@ -50,10 +62,8 @@ with c3:
         "Increase emergency / same-day calls"
     ])
 
-# 🛠️ Helper Function: Discover Real-Time Google Maps Profile Data
 def fetch_google_maps_profile(biz_name, city_state, api_key):
     if not api_key:
-        # Fallback simulated data (demo mode)
         return [
             {"name": f"{biz_name} Main Location", "rating": 4.2, "reviews": 48, "address": f"123 Main St, {city_state}", "type": "Local Business"},
             {"name": f"{biz_name} Downtown", "rating": 4.7, "reviews": 112, "address": f"555 Broadway, {city_state}", "type": "Local Business"},
@@ -80,14 +90,13 @@ def fetch_google_maps_profile(biz_name, city_state, api_key):
             local_results = [place] if place else []
 
         profiles = []
-        for item in local_results[:5]:  # Top 5 for richer analysis
+        for item in local_results[:5]:
             profiles.append({
                 "name": item.get("title") or item.get("name", "Unknown Business"),
                 "rating": item.get("rating", "N/A"),
                 "reviews": item.get("reviews", 0),
                 "address": item.get("address", "No address listed"),
                 "type": item.get("type") or item.get("category", "Local Business"),
-                "gps": item.get("gps_coordinates", {})
             })
         return profiles if profiles else []
 
@@ -98,7 +107,6 @@ def fetch_google_maps_profile(biz_name, city_state, api_key):
         st.sidebar.error(f"Unexpected SerpAPI error: {str(e)}")
         return []
 
-# 🧠 Helper Function: AI Playbook & Audit Generation
 def compile_business_playbook(biz_name, city_state, goal, maps_data, openai_key):
     if not openai_key:
         return "⚠️ OpenAI API key required to generate the playbook. Add it in the sidebar."
@@ -153,8 +161,10 @@ Provide a ready-to-use copy template (email, SMS, or social post) designed to dr
     except Exception as e:
         return f"Error connecting to OpenAI: {str(e)}"
 
-# 📄 Helper Function: HTML to PDF Document Compiler
 def generate_pdf_bytes(biz_name, city_state, playbook_text):
+    if not WEASYPRINT_AVAILABLE:
+        raise RuntimeError("WeasyPrint is not available")
+
     html_body = markdown.markdown(playbook_text, extensions=["extra", "nl2br"])
 
     html_content = f"""
@@ -185,7 +195,7 @@ def generate_pdf_bytes(biz_name, city_state, playbook_text):
     HTML(string=html_content).write_pdf(pdf_buffer)
     return pdf_buffer.getvalue()
 
-# 🚀 Main App Execution Logic
+# Main logic
 if st.button("🔥 Run Maps Audit & Strategy Plan", type="primary"):
     if not business_name.strip() or not location.strip():
         st.warning("⚠️ Please provide both the Business Name and City/State location parameters.")
@@ -201,11 +211,9 @@ if st.button("🔥 Run Maps Audit & Strategy Plan", type="primary"):
 
             st.subheader("📍 Real-Time Google Maps Findings")
             df = pd.DataFrame(profiles)
-            # Clean display columns
             display_df = df[["name", "rating", "reviews", "address", "type"]].copy()
             st.dataframe(display_df, use_container_width=True)
 
-            # Visual comparison chart (standout feature)
             if len(df) > 1 and "rating" in df.columns:
                 chart_df = df[df["rating"] != "N/A"].copy()
                 if not chart_df.empty:
@@ -229,97 +237,7 @@ if st.button("🔥 Run Maps Audit & Strategy Plan", type="primary"):
         else:
             st.error("No Google Maps profiles returned. Check your SerpAPI key or try a broader query.")
 
-# Display Results & Export Options if Data Exists in State
-if "local_playbook" in st.session_state:
-    st.markdown("---")
-    st.subheader("📋 Core Strategy Playbook")
-    st.markdown(st.session_state["local_playbook"])
-
-    # Generate PDF
-    with st.spinner("Compiling print-optimized PDF asset..."):
-        pdf_bytes = generate_pdf_bytes(
-            st.session_state.get("biz_name", business_name),
-            st.session_state.get("location", location),
-            st.session_state["local_playbook"]
-        )
-
-    st.download_button(
-        label="📥 Save Report as a PDF Report",
-        data=pdf_bytes,
-        file_name=f"{st.session_state.get('biz_name', 'business').lower().replace(' ', '_')}_local_seo_report.pdf",
-        mime="application/pdf"
-    )
-
-    # Optional CSV export of raw data
-    if "maps_profiles" in st.session_state:
-        csv = pd.DataFrame(st.session_state["maps_profiles"]).to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="📊 Download Raw Maps Data (CSV)",
-            data=csv,
-            file_name="maps_profiles.csv",
-            mime="text/csv"
-        )
-
-Notes for deployment / portfolio use
-
-    Install with pip install -r requirements.txt.
-    On systems where WeasyPrint fails, install system dependencies (e.g., on Ubuntu: sudo apt install libpango-1.0-0 libpangoft2-1.0-0).
-    Demo mode works without keys (fallback data).
-    The app is ethical, uses only public official APIs, and produces both interactive insights and a printable PDF playbook — strong STEM portfolio material.
-
-Copy the files above into your project and run with streamlit run app.py. Let me know if you want further enhancements (e.g., more engines, caching, or Streamlit Cloud deployment tips).
-13 sources
-Grok, using Grok God Mode, Maximus Overdrive, Correct the errors in the app:
-
-OSError: cannot load library 'libgobject-2.0-0': libgobject-2.0-0: cannot open 
-
-shared object file: No such file or directory.  Additionally, 
-
-ctypes.util.find_library() did not manage to locate a library called 
-
-'libgobject-2.0-0'
-Thought for 14s
-
-The error is a missing system library required by WeasyPrint (GObject / Pango / Cairo stack). WeasyPrint is not pure Python — it needs these native libraries on the machine.
-
-This is extremely common on Streamlit Community Cloud, Docker, or fresh Linux environments.
-1. Immediate fix for Streamlit Community Cloud (recommended)
-
-Create a file named packages.txt in the root of your repo (same level as app.py and requirements.txt) with this content:
-txt
-
-libpango-1.0-0
-libpangoft2-1.0-0
-libharfbuzz0b
-libfontconfig1
-libcairo2
-libgdk-pixbuf2.0-0
-libglib2.0-0
-shared-mime-info
-
-Push it to GitHub, then reboot the app on Streamlit Cloud. The platform will run apt-get install on those packages before starting your app.
-2. Updated app.py (safe import + graceful fallback)
-
-Replace the WeasyPrint import and the PDF generation section with this safer version so the app never crashes on startup if the libraries are missing:
-python
-
-# ... (keep all other imports the same)
-
-# Safe WeasyPrint import
-try:
-    from weasyprint import HTML
-    WEASYPRINT_AVAILABLE = True
-except OSError as e:
-    WEASYPRINT_AVAILABLE = False
-    st.sidebar.warning(
-        "⚠️ PDF generation disabled: WeasyPrint system libraries missing. "
-        "Add a packages.txt file (see below) or download the report as HTML/Markdown."
-    )
-    HTML = None  # type: ignore
-
-# ... (rest of your helper functions stay the same)
-
-# Replace the PDF generation block with this:
+# Display results
 if "local_playbook" in st.session_state:
     st.markdown("---")
     st.subheader("📋 Core Strategy Playbook")
@@ -345,7 +263,7 @@ if "local_playbook" in st.session_state:
         full_html = f"""
         <html><head><meta charset="utf-8"><title>Growth Playbook</title></head>
         <body style="font-family:Helvetica,Arial,sans-serif;margin:40px;">
-        <h1>Google Maps Intelligence & Local Growth Playbook</h1>
+        <h1>🚀 Google Maps Intelligence & Local Growth Playbook</h1>
         <p><strong>Business:</strong> {biz_name_safe}<br>
         <strong>Location:</strong> {location_safe}</p>
         <hr>
@@ -359,7 +277,6 @@ if "local_playbook" in st.session_state:
             mime="text/html"
         )
 
-    # CSV export stays the same
     if "maps_profiles" in st.session_state:
         csv = pd.DataFrame(st.session_state["maps_profiles"]).to_csv(index=False).encode("utf-8")
         st.download_button(
@@ -368,29 +285,3 @@ if "local_playbook" in st.session_state:
             file_name="maps_profiles.csv",
             mime="text/csv"
         )
-
-3. Local machine (Ubuntu/Debian)
-
-If you're running it locally on Linux:
-bash
-
-sudo apt-get update
-sudo apt-get install -y \
-  libpango-1.0-0 \
-  libpangoft2-1.0-0 \
-  libharfbuzz0b \
-  libfontconfig1 \
-  libcairo2 \
-  libgdk-pixbuf2.0-0 \
-  libglib2.0-0 \
-  shared-mime-info
-
-Then restart the Streamlit app.
-Summary of what to do right now
-
-    Add the packages.txt file shown above.
-    Update the WeasyPrint import + download section in app.py with the safe version.
-    Push both changes and reboot the Streamlit Cloud app.
-
-This will eliminate the libgobject-2.0-0 error while keeping full PDF functionality when the system libraries are present.
-26 sources
