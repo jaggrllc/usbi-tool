@@ -6,7 +6,7 @@ import markdown
 from openai import OpenAI
 import io
 
-# Safe WeasyPrint import (prevents crash if system libs are missing)
+# Safe WeasyPrint import
 try:
     from weasyprint import HTML
     WEASYPRINT_AVAILABLE = True
@@ -14,7 +14,6 @@ except OSError:
     WEASYPRINT_AVAILABLE = False
     HTML = None  # type: ignore
 
-# Page config
 st.set_page_config(
     page_title="Universal Small Business Intelligence Tool",
     page_icon="🚀",
@@ -285,3 +284,13 @@ if "local_playbook" in st.session_state:
             file_name="maps_profiles.csv",
             mime="text/csv"
         )
+
+# Privacy Mode – LAST BUTTON on the page
+st.markdown("---")
+if st.button("🧹 Clear generated report from session (privacy)", type="secondary"):
+    keys_to_clear = ["local_playbook", "maps_profiles", "biz_name", "location", "goal"]
+    for key in keys_to_clear:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.success("✅ Report and Maps data cleared from this session.")
+    st.rerun()
