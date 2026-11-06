@@ -171,12 +171,38 @@ def generate_pdf_bytes(biz_name, city_state, playbook_text):
     <head>
         <style>
             @page {{ size: letter; margin: 0.75in; }}
-            body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333333; line-height: 1.55; }}
-            h1 {{ color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; font-size: 22px; }}
-            h3 {{ color: #1e40af; margin-top: 22px; font-size: 15px; page-break-after: avoid; }}
-            p, li {{ font-size: 11.5px; color: #4b5563; }}
+            body {{
+                font-family: 'Noto Color Emoji', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                color: #333333;
+                line-height: 1.55;
+            }}
+            h1 {{
+                color: #1e3a8a;
+                border-bottom: 2px solid #1e3a8a;
+                padding-bottom: 8px;
+                font-size: 22px;
+                font-family: 'Noto Color Emoji', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            }}
+            h3 {{
+                color: #1e40af;
+                margin-top: 22px;
+                font-size: 15px;
+                page-break-after: avoid;
+                font-family: 'Noto Color Emoji', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            }}
+            p, li {{
+                font-size: 11.5px;
+                color: #4b5563;
+                font-family: 'Noto Color Emoji', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            }}
             ul {{ margin-top: 4px; }}
-            .brand-badge {{ background-color: #f3f4f6; border-left: 4px solid #3b82f6; padding: 12px; margin-bottom: 18px; page-break-inside: avoid; }}
+            .brand-badge {{
+                background-color: #f3f4f6;
+                border-left: 4px solid #3b82f6;
+                padding: 12px;
+                margin-bottom: 18px;
+                page-break-inside: avoid;
+            }}
         </style>
     </head>
     <body>
